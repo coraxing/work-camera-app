@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/camera_profile.dart';
 
@@ -36,6 +37,17 @@ class CameraCard extends StatelessWidget {
           color: const Color(0xFF1C1C1C),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: const Color(0xFF2C2C2C), width: 0.5),
+          image: profile.wallpaperPath != null &&
+                  profile.wallpaperPath!.isNotEmpty
+              ? DecorationImage(
+                  image: FileImage(File(profile.wallpaperPath!)),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                    Colors.black.withValues(alpha: 0.55),
+                    BlendMode.darken,
+                  ),
+                )
+              : null,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -44,7 +56,7 @@ class CameraCard extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: accent.withOpacity(0.12),
+                color: accent.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -62,14 +74,6 @@ class CameraCard extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
               overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${profile.photoCount} 张',
-              style: const TextStyle(
-                color: Color(0xFF8E8E93),
-                fontSize: 12,
-              ),
             ),
           ],
         ),

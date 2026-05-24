@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
+import 'package:intl/intl.dart';
 import '../models/camera_profile.dart';
 
 class DatabaseHelper {
@@ -18,7 +19,7 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     return openDatabase(
       p.join(dbPath, 'work_camera.db'),
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE camera_profiles (
@@ -33,9 +34,21 @@ class DatabaseHelper {
             maxHeight INTEGER DEFAULT 0,
             isDeleted INTEGER DEFAULT 0,
             deletedAt INTEGER,
-            photoCount INTEGER DEFAULT 0
+            photoCount INTEGER DEFAULT 0,
+            wallpaperPath TEXT,
+            dailyDate TEXT,
+            dailyCount INTEGER DEFAULT 0,
+            customText TEXT
           )
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('ALTER TABLE camera_profiles ADD COLUMN wallpaperPath TEXT');
+          await db.execute('ALTER TABLE camera_profiles ADD COLUMN dailyDate TEXT');
+          await db.execute('ALTER TABLE camera_profiles ADD COLUMN dailyCount INTEGER DEFAULT 0');
+          await db.execute('ALTER TABLE camera_profiles ADD COLUMN customText TEXT');
+        }
       },
     );
   }
@@ -74,6 +87,48 @@ class DatabaseHelper {
     final d = await db;
     await d.rawUpdate(
         'UPDATE camera_profiles SET photoCount = photoCount + 1 WHERE id = ?', [id]);
+  }
+
+  Future<String> incrementDailyCount(String id) async {
+    final d = await db;
+    final today = DateFormat('yyyyMMdd').format(DateTime.now());
+
+    final rows = await d.query('camera_profiles',
+        columns: ['dailyDate', 'dailyCount'],
+        where: 'id = ?',
+        whereArgs: [id]);
+
+    if (rows.isEmpty) throw Exception('Profile not found');
+
+    final oldDate = rows.first['dailyDate'] as String?;
+    final oldCount = (rows.first['dailyCount'] as int?) ?? 0;
+
+    final int newCount;
+    if (oldDate != today) {
+      newCount = 1;
+    } else {
+      newCount = oldCount + 1;
+    }
+
+    String seqStr;
+    if (newCount <= 999) {
+      seqStr = newCount.toString().padLeft(3, '0');
+    } else {
+      final suffixIndex = (newCount - 1) ~/ 999 - 1;
+      final seqNum = (newCount - 1) % 999 + 1;
+      final suffix = suffixIndex < 26 ? String.fromCharCode(65 + suffixIndex) : '';
+      seqStr = '${seqNum.toString().padLeft(3, '0')}$suffix';
+    }
+
+    await d.update('camera_profiles', {
+      'dailyDate': today,
+      'dailyCount': newCount,
+    }, where: 'id = ?', whereArgs: [id]);
+
+    await d.rawUpdate(
+        'UPDATE camera_profiles SET photoCount = photoCount + 1 WHERE id = ?', [id]);
+
+    return seqStr;
   }
 
   // --- soft delete / recycle bin ---

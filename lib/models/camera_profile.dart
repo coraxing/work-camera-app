@@ -10,7 +10,11 @@ class CameraProfile {
   int maxHeight;
   bool isDeleted;
   DateTime? deletedAt;
-  int photoCount; // counter for {序号} template
+  int photoCount;
+  String? wallpaperPath;
+  String? dailyDate;
+  int dailyCount;
+  String? customText;
 
   CameraProfile({
     required this.id,
@@ -25,6 +29,10 @@ class CameraProfile {
     this.isDeleted = false,
     this.deletedAt,
     this.photoCount = 0,
+    this.wallpaperPath,
+    this.dailyDate,
+    this.dailyCount = 0,
+    this.customText,
   });
 
   Map<String, dynamic> toMap() => {
@@ -40,6 +48,10 @@ class CameraProfile {
         'isDeleted': isDeleted ? 1 : 0,
         'deletedAt': deletedAt?.millisecondsSinceEpoch,
         'photoCount': photoCount,
+        'wallpaperPath': wallpaperPath,
+        'dailyDate': dailyDate,
+        'dailyCount': dailyCount,
+        'customText': customText,
       };
 
   factory CameraProfile.fromMap(Map<String, dynamic> map) => CameraProfile(
@@ -58,6 +70,10 @@ class CameraProfile {
             ? DateTime.fromMillisecondsSinceEpoch(map['deletedAt'] as int)
             : null,
         photoCount: map['photoCount'] as int? ?? 0,
+        wallpaperPath: map['wallpaperPath'] as String?,
+        dailyDate: map['dailyDate'] as String?,
+        dailyCount: map['dailyCount'] as int? ?? 0,
+        customText: map['customText'] as String?,
       );
 
   CameraProfile copyWith({
@@ -72,6 +88,10 @@ class CameraProfile {
     bool? isDeleted,
     DateTime? deletedAt,
     int? photoCount,
+    String? wallpaperPath,
+    String? dailyDate,
+    int? dailyCount,
+    String? customText,
   }) =>
       CameraProfile(
         id: id,
@@ -86,5 +106,9 @@ class CameraProfile {
         isDeleted: isDeleted ?? this.isDeleted,
         deletedAt: deletedAt ?? this.deletedAt,
         photoCount: photoCount ?? this.photoCount,
+        wallpaperPath: wallpaperPath ?? this.wallpaperPath,
+        dailyDate: dailyDate ?? this.dailyDate,
+        dailyCount: dailyCount ?? this.dailyCount,
+        customText: customText ?? this.customText,
       );
 }

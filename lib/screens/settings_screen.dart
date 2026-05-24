@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/camera_profile.dart';
 import '../database/database_helper.dart';
 
@@ -94,7 +97,104 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
 
-            _sectionLabel('文件名模板'),
+            _sectionLabel('卡片壁纸'),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: _pickWallpaper,
+              child: Container(
+                width: double.infinity,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1C1C1C),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF2C2C2C)),
+                  image: _p.wallpaperPath != null &&
+                          _p.wallpaperPath!.isNotEmpty
+                      ? DecorationImage(
+                          image: FileImage(File(_p.wallpaperPath!)),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: _p.wallpaperPath == null || _p.wallpaperPath!.isEmpty
+                    ? const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_photo_alternate_outlined,
+                              color: Color(0xFF8E8E93), size: 28),
+                          SizedBox(height: 4),
+                          Text('点击选择壁纸',
+                              style: TextStyle(
+                                  color: Color(0xFF8E8E93), fontSize: 12)),
+                        ],
+                      )
+                    : Align(
+                        alignment: Alignment.bottomRight,
+                        child: Container(
+                          margin: const EdgeInsets.all(6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text('更换',
+                              style: TextStyle(
+                                  color: Colors.white, fontSize: 11)),
+                        ),
+                      ),
+              ),
+            ),
+            if (_p.wallpaperPath != null && _p.wallpaperPath!.isNotEmpty)
+              TextButton(
+                onPressed: () => setState(() => _p.wallpaperPath = null),
+                child: const Text('清除壁纸', style: TextStyle(fontSize: 12)),
+              ),
+            const SizedBox(height: 24),
+
+            _sectionLabel('文件名预览'),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1C1C),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF2C2C2C)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.lock_outline, size: 14, color: Color(0xFF8E8E93)),
+                  const SizedBox(width: 8),
+                  Text(
+                    _computeTemplatePreview(),
+                    style: const TextStyle(
+                      color: Color(0xFF8E8E93),
+                      fontSize: 14,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            _sectionLabel('自定义文本'),
+            const SizedBox(height: 8),
+            TextFormField(
+              initialValue: _p.customText ?? '',
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                hintText: '可选，如：甲方验收',
+                helperText: '填入后文件名变为：{相机名}_{自定义文本}_{日期}_{序号}',
+                helperStyle: TextStyle(color: Color(0xFF8E8E93), fontSize: 12),
+              ),
+              onChanged: (v) =>
+                  setState(() => _p.customText = v.trim().isEmpty ? null : v.trim()),
+            ),
+            const SizedBox(height: 24),
+
+            _sectionLabel('存储子目录'),
             const SizedBox(height: 8),
             TextFormField(
               initialValue: _p.filenameTemplate,
@@ -197,6 +297,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _sectionLabel(String text) {
     return Text(text, style: const TextStyle(color: Color(0xFF8E8E93), fontSize: 13));
+  }
+
+  String _computeTemplatePreview() {
+    if (_p.customText != null && _p.customText!.trim().isNotEmpty) {
+      return '{相机名}_${_p.customText!.trim()}_{日期}_{序号}';
+    }
+    return '{相机名}_{日期}_{序号}';
+  }
+
+  Future<void> _pickWallpaper() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, maxWidth: 800);
+    if (picked == null) return;
+
+    final appDir = await getApplicationDocumentsDirectory();
+    final wallpaperDir = Directory('${appDir.path}/wallpapers');
+    if (!await wallpaperDir.exists()) await wallpaperDir.create(recursive: true);
+
+    final destPath = '${wallpaperDir.path}/${_p.id}.jpg';
+    await File(picked.path).copy(destPath);
+
+    setState(() => _p.wallpaperPath = destPath);
   }
 
   Future<void> _save() async {
