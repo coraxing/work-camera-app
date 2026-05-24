@@ -77,6 +77,48 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     return '${appDir.path}/工作记录/';
   }
 
+  Future<void> _deleteCurrent() async {
+    if (_photoPaths.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1C1C1C),
+        title: const Text('确认删除', style: TextStyle(color: Colors.white)),
+        content: const Text('删除后无法恢复', style: TextStyle(color: Color(0xFF8E8E93))),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除', style: TextStyle(color: Color(0xFFCF2E2E))),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final path = _photoPaths[_currentIndex];
+    try {
+      await File(path).delete();
+    } catch (_) {}
+
+    setState(() {
+      _photoPaths.removeAt(_currentIndex);
+      if (_photoPaths.isEmpty) {
+        _currentIndex = 0;
+        Navigator.pop(context);
+        return;
+      }
+      if (_currentIndex >= _photoPaths.length) {
+        _currentIndex = _photoPaths.length - 1;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -89,7 +131,12 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          if (_photoPaths.isNotEmpty)
+          if (_photoPaths.isNotEmpty) ...[
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Color(0xFFCF2E2E)),
+              tooltip: '删除',
+              onPressed: _deleteCurrent,
+            ),
             IconButton(
               icon: Icon(_gridMode
                   ? Icons.view_agenda_outlined
@@ -97,6 +144,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
               tooltip: _gridMode ? '全屏' : '网格',
               onPressed: () => setState(() => _gridMode = !_gridMode),
             ),
+          ],
         ],
       ),
       body: _loading

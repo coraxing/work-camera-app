@@ -83,7 +83,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
     try {
       final file = await _controller.takePicture();
-      await _save(file);
+      await _save(file, _currentZoom);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -95,7 +95,7 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
-  Future<void> _save(XFile capturedFile) async {
+  Future<void> _save(XFile capturedFile, double zoom) async {
     final db = DatabaseHelper();
     final profile = widget.profile;
 
@@ -116,6 +116,9 @@ class _CameraScreenState extends State<CameraScreen> {
 
     if (decoded != null) {
       img.Image output = decoded;
+
+      if (zoom >= 3.0) output = _applyWhiteBalance(output);
+
       if ((profile.maxWidth > 0 && output.width > profile.maxWidth) ||
           (profile.maxHeight > 0 && output.height > profile.maxHeight)) {
         final targetW =
@@ -133,6 +136,47 @@ class _CameraScreenState extends State<CameraScreen> {
     }
 
     if (mounted) setState(() => _lastPhotoPath = destPath);
+  }
+
+  img.Image _applyWhiteBalance(img.Image image) {
+    final bytes = image.getBytes(order: img.ChannelOrder.rgba);
+    final pixelCount = bytes.length ~/ 4;
+
+    // Sample every 2nd pixel for channel averages
+    int rSum = 0, gSum = 0, bSum = 0, count = 0;
+    for (int i = 0; i < bytes.length; i += 8) {
+      rSum += bytes[i];
+      gSum += bytes[i + 1];
+      bSum += bytes[i + 2];
+      count++;
+    }
+
+    final avgR = rSum / count;
+    final avgG = gSum / count;
+    final avgB = bSum / count;
+
+    if (avgG < avgR * 1.15 || avgG < avgB * 1.15) return image;
+
+    final gray = (avgR + avgG + avgB) / 3.0;
+    final scaleR = gray / avgR;
+    final scaleG = gray / avgG;
+    final scaleB = gray / avgB;
+
+    for (int i = 0; i < bytes.length; i += 4) {
+      bytes[i] = (bytes[i] * scaleR).round().clamp(0, 255).toInt();
+      bytes[i + 1] = (bytes[i + 1] * scaleG).round().clamp(0, 255).toInt();
+      bytes[i + 2] = (bytes[i + 2] * scaleB).round().clamp(0, 255).toInt();
+    }
+
+    return img.Image.fromBytes(
+      width: image.width,
+      height: image.height,
+      bytes: bytes.buffer,
+      numChannels: 4,
+      format: img.Format.uint8,
+      order: img.ChannelOrder.rgba,
+      exif: image.exif,
+    );
   }
 
   Future<String> _getBaseDir() async {
@@ -183,28 +227,32 @@ class _CameraScreenState extends State<CameraScreen> {
                 child: Center(
                   child: GestureDetector(
                     onTapUp: _onTapUp,
-                    child: CameraPreview(_controller),
+                    child: Stack(
+                      children: [
+                        CameraPreview(_controller),
+                        if (_focusPoint != null)
+                          Positioned(
+                            left: _focusPoint!.dx - 28,
+                            top: _focusPoint!.dy - 28,
+                            child: IgnorePointer(
+                              child: Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                      color: const Color(0xFFCF2E2E), width: 2),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-
-          if (_focusPoint != null)
-            Positioned(
-              left: _focusPoint!.dx - 28,
-              top: _focusPoint!.dy - 28,
-              child: IgnorePointer(
-                child: Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFCF2E2E), width: 2),
-                  ),
-                ),
-              ),
-            ),
 
           // Top bar
           Positioned(
