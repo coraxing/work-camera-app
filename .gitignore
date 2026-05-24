@@ -1,0 +1,31 @@
+# Flutter
+.dart_tool/
+.packages
+build/
+*.iml
+.idea/
+.vscode/
+*.lock
+
+# Android
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+*.jks
+*.keystore
+
+# iOS
+ios/Pods/
+ios/build/
+ios/.symlinks/
+
+# macOS
+macos/Pods/
+macos/build/
+
+# Misc
+*.log
+*.pyc
+*.swp
+.DS_Store
